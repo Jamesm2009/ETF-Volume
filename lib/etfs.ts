@@ -25,8 +25,11 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "XLP",  name: "Consumer Staples",          category: "US Sectors" },
   { ticker: "XLI",  name: "Industrials",               category: "US Sectors" },
   { ticker: "XLU",  name: "Utilities",                 category: "US Sectors" },
-  { ticker: "XLI",  name: "Industrials",               category: "US Sectors" },
+  { ticker: "XLE",  name: "Energy",                    category: "US Sectors" },
+  { ticker: "XLV",  name: "Healthcare",                category: "US Sectors" },
   { ticker: "XLRE", name: "Real Estate",               category: "US Sectors },
+  { ticker: "XLF",  name: "Financials",                category: "US Sectors },
+  { ticker: "XLB",  name: "Materials",                 category: "US Sectors" },
   { ticker: "XRT",  name: "Retail",                    category: "US Sectors" },
 
   // International
@@ -35,7 +38,9 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "EEM",  name: "Emerging Markets",          category: "International" },
   { ticker: "EMXC", name: "EM ex-China",               category: "International" },
   { ticker: "FXI",  name: "China Large Cap",           category: "International" },
-
+  { ticker: "EWJ",  name: "Japan",                     category: "International" },
+  { ticker: "EWU",  name: "United Kingdom",            category: "International" },
+  
   // Fixed Income
   { ticker: "AGG",  name: "US Aggregate Bond",         category: "Fixed Income" },
   { ticker: "IEF",  name: "7-10yr Treasury",           category: "Fixed Income" },
@@ -48,6 +53,7 @@ export const ETF_UNIVERSE: ETF[] = [
 
   // Commodities & Alternatives
   { ticker: "GLD",  name: "Gold",                      category: "Commodities & Alt" },
+  { ticker: "SLV",  name: "Silver",                    category: "Commodities & Alt" },
   { ticker: "DBC",  name: "Commodities Index",         category: "Commodities & Alt" },
   { ticker: "USO",  name: "Oil",                       category: "Commodities & Alt" },
   { ticker: "UUP",  name: "US Dollar",                 category: "Commodities & Alt" },
