@@ -18,7 +18,7 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "SPLV", name: "S&P 500 Low Volatility",    category: "Broad US Equity" },
   { ticker: "SDY",  name: "S&P Dividend Aristocrats",  category: "Broad US Equity" },
 
-  // US Sectors
+  // US Sectors v2
   { ticker: "XLK",  name: "Technology",                category: "US Sectors" },
   { ticker: "XLC",  name: "Communication Services",    category: "US Sectors" },
   { ticker: "XLY",  name: "Consumer Discretionary",    category: "US Sectors" },
