@@ -26,6 +26,7 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "XLI",  name: "Industrials",               category: "US Sectors" },
   { ticker: "XLU",  name: "Utilities",                 category: "US Sectors" },
   { ticker: "XLI",  name: "Industrials",               category: "US Sectors" },
+  { ticker: "XLRE", name: "Real Estate",               category: "US Sectors },
   { ticker: "XRT",  name: "Retail",                    category: "US Sectors" },
 
   // International
@@ -51,8 +52,7 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "USO",  name: "Oil",                       category: "Commodities & Alt" },
   { ticker: "UUP",  name: "US Dollar",                 category: "Commodities & Alt" },
   { ticker: "IBIT", name: "Bitcoin",                   category: "Commodities & Alt" },
-  { ticker: "CLI",  name: "Cantor Fitzgerald Income",  category: "Commodities & Alt" },
-  { ticker: "CLRE", name: "Carbon Credits",            category: "Commodities & Alt" },
+
 ];
 
 // Deduplicate (XLI appeared twice)
