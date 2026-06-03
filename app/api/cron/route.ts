@@ -74,11 +74,8 @@ async function fetchYFinanceData(tickers: string[]): Promise<Record<string, any>
 }
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+// No auth check — Vercel cron jobs call this automatically on schedule
+// Manual browser visits also allowed for seeding data
 
   const tickers = ETFS.map((e) => e.ticker);
   const raw = await fetchYFinanceData(tickers);
