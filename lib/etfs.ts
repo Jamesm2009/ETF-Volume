@@ -27,8 +27,8 @@ export const ETF_UNIVERSE: ETF[] = [
   { ticker: "XLU",  name: "Utilities",                 category: "US Sectors" },
   { ticker: "XLE",  name: "Energy",                    category: "US Sectors" },
   { ticker: "XLV",  name: "Healthcare",                category: "US Sectors" },
-  { ticker: "XLRE", name: "Real Estate",               category: "US Sectors },
-  { ticker: "XLF",  name: "Financials",                category: "US Sectors },
+  { ticker: "XLRE", name: "Real Estate",               category: "US Sectors" },
+  { ticker: "XLF",  name: "Financials",                category: "US Sectors" },
   { ticker: "XLB",  name: "Materials",                 category: "US Sectors" },
   { ticker: "XRT",  name: "Retail",                    category: "US Sectors" },
 
