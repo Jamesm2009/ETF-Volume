@@ -43,7 +43,7 @@ function RatioBadge({ ratio }: { ratio: number }) {
   );
 }
 
-// 5-day volume sparkline — mini bars colored by flow direction
+// 5-day volume sparkline — mini bars colored by flow direction v1
 function Sparkline({ days, avg30 }: { days: DayFlow[]; avg30: number }) {
   if (!days || days.length === 0) return <span style={{ color: "#cbd5e1", fontSize: 10 }}>—</span>;
   const maxVol = Math.max(...days.map(d => d.volume), avg30 * 1.5);
