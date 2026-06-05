@@ -45,7 +45,7 @@ function RatioBadge({ ratio }: { ratio: number }) {
 
 // 5-day volume sparkline — mini bars colored by flow direction v2
 function Sparkline({ days, avg30 }: { days: DayFlow[]; avg30: number }) {
-  if (!days || days.length === 0) return <span style={{ color: "#cbd5e1", fontSize: 10 }}>—</span>;
+  if (!days || days.length === 0) return <span style={{ color: "#60a5f7", fontSize: 10 }}>—</span>;
   const maxVol = Math.max(...days.map(d => d.volume), avg30 * 1.5);
   const W = 56, H = 24, gap = 2;
   const barW = (W - gap * (days.length - 1)) / days.length;
@@ -188,7 +188,7 @@ export default function Dashboard() {
               <span style={{ color: "#22c55e" }}>▲ Inflow = close &gt; open</span>
               <span style={{ color: "#ef4444" }}>▼ Outflow = close &lt; open</span>
               <span style={{ color: "#94a3b8" }}>— Neutral</span>
-              <span style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>Sparkline = last 5 days · dashed line = 30-day avg</span>
+              <span style={{ borderLeft: "2px solid #60a5f7", paddingLeft: 16 }}>Sparkline = last 5 days · dashed line = 30-day avg</span>
             </div>
 
             {/* BAR CHART */}
