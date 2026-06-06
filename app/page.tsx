@@ -219,7 +219,7 @@ export default function Dashboard() {
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "right" }}>Flow</div>
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "right" }}>Ratio</div>
                 </div>
-                {filtered.map((r, i) => {
+                {[...filtered].sort((a, b) => b.ratio - a.ratio).map((r, i) => {
                   const pct = Math.min((r.ratio / (maxRatio * 1.05)) * 100, 100);
                   const barColor = r.ratio >= 2 ? "#ef4444" : r.ratio >= 1.5 ? "#fb923c" : r.ratio >= 1.0 ? "#22c55e" : "#c084fc";
                   const catColor = CAT_COLOR[r.category] ?? "#60a5fa";
