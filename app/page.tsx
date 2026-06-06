@@ -10,9 +10,10 @@ type SortKey = "ratio" | "volume" | "dollarVolume" | "ticker" | "flow";
 const CAT_COLOR: Record<string, string> = {
   "Broad US Equity":   "#60a5fa",
   "US Sectors":        "#34d399",
-  "International":     "#fb923c",
+  "Intl - Dev Mrkt":   "#fb923c",
+  "Intl - Emer Mrkt":  "#d99b5d",
   "Fixed Income":      "#c084fc",
-  "Commodities & Alt": "#fbbf24",
+  "Commodities & Alt": "##ffe203",
 };
 
 const FLOW_COLOR = { inflow: "#22c55e", outflow: "#ef4444", neutral: "#94a3b8" };
