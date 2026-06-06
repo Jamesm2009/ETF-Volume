@@ -199,7 +199,7 @@ export default function Dashboard() {
               <span style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>Sparkline = last 5 days · <span style={{ color: "#3b82f6" }}>blue dashed</span> = 30-day avg</span>
             </div>
 
-            {/* ── BAR CHART VIEW ── */}
+            {/* ── BAR CHART VIEW ── Default*/}
             {view === "bar" && (
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.06)" }}>
                 <div style={{ padding: "7px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
