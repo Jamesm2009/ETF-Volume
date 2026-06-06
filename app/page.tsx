@@ -2,18 +2,18 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { ETFS, CATEGORIES } from "@/lib/etfs";
-import { VolumeData, ETFVolumeRecord, DayFlow } from "@/lib/redis";
+import { VolumeData, DayFlow } from "@/lib/redis";
 
-type View = "bar" | "table";
+type View = "bar" | "table" | "top5";
 type SortKey = "ratio" | "volume" | "dollarVolume" | "ticker" | "flow";
 
 const CAT_COLOR: Record<string, string> = {
   "Broad US Equity":   "#60a5fa",
   "US Sectors":        "#34d399",
   "Intl - Dev Mrkt":   "#fb923c",
-  "Intl - Emer Mrkt":  "#d99b5d",
+  "Intl - Emer Mrkt":  "#f59e0b",
   "Fixed Income":      "#c084fc",
-  "Commodities & Alt": "##ffe203",
+  "Commodities & Alt": "#facc15",
 };
 
 const FLOW_COLOR = { inflow: "#22c55e", outflow: "#ef4444", neutral: "#94a3b8" };
@@ -44,20 +44,17 @@ function RatioBadge({ ratio }: { ratio: number }) {
   );
 }
 
-// 5-day volume sparkline — mini bars colored by flow direction v2
 function Sparkline({ days, avg30 }: { days: DayFlow[]; avg30: number }) {
-  if (!days || days.length === 0) return <span style={{ color: "#60a5f7", fontSize: 10 }}>—</span>;
+  if (!days || days.length === 0) return <span style={{ color: "#94a3b8", fontSize: 10 }}>—</span>;
   const maxVol = Math.max(...days.map(d => d.volume), avg30 * 1.5);
   const W = 56, H = 24, gap = 2;
   const barW = (W - gap * (days.length - 1)) / days.length;
-
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
-      {/* avg30 reference line */}
       <line
         x1={0} y1={H - (avg30 / maxVol) * H}
         x2={W} y2={H - (avg30 / maxVol) * H}
-        stroke="#94a3b8" strokeWidth={1} strokeDasharray="2,2" opacity={0.5}
+        stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3,2" opacity={0.9}
       />
       {days.map((d, i) => {
         const h = Math.max((d.volume / maxVol) * H, 2);
@@ -70,13 +67,13 @@ function Sparkline({ days, avg30 }: { days: DayFlow[]; avg30: number }) {
 }
 
 export default function Dashboard() {
-  const [data, setData]       = useState<VolumeData | null>(null);
-  const [error, setError]     = useState<string | null>(null);
-  const [view, setView]       = useState<View>("bar");
-  const [sortKey, setSortKey] = useState<SortKey>("ratio");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [data, setData]           = useState<VolumeData | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const [view, setView]           = useState<View>("table");
+  const [sortKey, setSortKey]     = useState<SortKey>("ratio");
+  const [sortAsc, setSortAsc]     = useState(false);
   const [filterCat, setFilterCat] = useState("All");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     fetch("/api/data")
@@ -88,7 +85,9 @@ export default function Dashboard() {
   const enriched = useMemo(() => {
     if (!data) return [];
     const etfMap = Object.fromEntries(ETFS.map(e => [e.ticker, e]));
-    return data.records.map(r => ({ ...r, ...etfMap[r.ticker] })).filter(r => r.ticker && r.volume > 0);
+    return data.records
+      .map(r => ({ ...r, ...etfMap[r.ticker] }))
+      .filter(r => r.ticker && r.volume > 0);
   }, [data]);
 
   const filtered = useMemo(() => {
@@ -104,9 +103,9 @@ export default function Dashboard() {
     });
   }, [enriched, filterCat, sortKey, sortAsc]);
 
-  const maxRatio = useMemo(() => Math.max(...filtered.map(r => r.ratio), 1), [filtered]);
-  const top5 = useMemo(() => [...enriched].sort((a, b) => b.ratio - a.ratio).slice(0, 5), [enriched]);
-  const bot5 = useMemo(() => [...enriched].sort((a, b) => a.ratio - b.ratio).slice(0, 5), [enriched]);
+  const maxRatio   = useMemo(() => Math.max(...filtered.map(r => r.ratio), 1), [filtered]);
+  const top5       = useMemo(() => [...enriched].sort((a, b) => b.ratio - a.ratio).slice(0, 5), [enriched]);
+  const bot5       = useMemo(() => [...enriched].sort((a, b) => a.ratio - b.ratio).slice(0, 5), [enriched]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(v => !v);
@@ -122,6 +121,12 @@ export default function Dashboard() {
   const elevCount    = enriched.filter(r => r.ratio >= 1.5).length;
   const vhCount      = enriched.filter(r => r.ratio >= 2).length;
 
+  const VIEWS: { key: View; label: string }[] = [
+    { key: "table", label: "Table" },
+    { key: "bar",   label: "Chart" },
+    { key: "top5",  label: "Top / Bot 5" },
+  ];
+
   return (
     <div style={{ minHeight: "100vh", background: "#f0f4f8", color: "#1e293b", fontFamily: "'DM Mono','IBM Plex Mono','Courier New',monospace", paddingBottom: 40 }}>
 
@@ -134,9 +139,9 @@ export default function Dashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           {updatedAt && <div style={{ fontSize: 11, color: "#94a3b8" }}>Updated {updatedAt}</div>}
           <div style={{ display: "flex", gap: 6 }}>
-            {(["bar", "table"] as View[]).map(v => (
-              <button key={v} onClick={() => setView(v)} style={{ background: view === v ? "#2563eb" : "rgba(255,255,255,.08)", color: view === v ? "#fff" : "#94a3b8", border: `1px solid ${view === v ? "#2563eb" : "rgba(255,255,255,.15)"}`, borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: view === v ? 700 : 400 }}>
-                {v === "bar" ? "Chart" : "Table"}
+            {VIEWS.map(({ key, label }) => (
+              <button key={key} onClick={() => setView(key)} style={{ background: view === key ? "#2563eb" : "rgba(255,255,255,.08)", color: view === key ? "#fff" : "#94a3b8", border: `1px solid ${view === key ? "#2563eb" : "rgba(255,255,255,.15)"}`, borderRadius: 6, padding: "5px 14px", cursor: "pointer", fontSize: 11, fontFamily: "inherit", letterSpacing: "0.06em", textTransform: "uppercase", fontWeight: view === key ? 700 : 400 }}>
+                {label}
               </button>
             ))}
           </div>
@@ -145,7 +150,7 @@ export default function Dashboard() {
 
       <div style={{ padding: "12px 20px 0" }}>
 
-        {/* Category pills */}
+        {/* Category filter pills */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
           {["All", ...CATEGORIES].map(cat => {
             const col = CAT_COLOR[cat] ?? "#2563eb";
@@ -168,45 +173,45 @@ export default function Dashboard() {
 
         {!loading && !error && data && (
           <>
-            {/* Summary cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
+            {/* Summary cards — 6 categories */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(6,1fr)", gap: 8, marginBottom: 12 }}>
               {[
-                { label: "Inflow (up day)",    value: inflowCount,  color: "#22c55e" },
-                { label: "Outflow (down day)", value: outflowCount, color: "#ef4444" },
-                { label: "Elevated (>1.5x)",   value: elevCount,    color: "#fb923c" },
-                { label: "Very High (>2x)",    value: vhCount,      color: "#ef4444" },
+                { label: "Inflow (up day)",       value: inflowCount,  color: "#22c55e" },
+                { label: "Outflow (down day)",     value: outflowCount, color: "#ef4444" },
+                { label: "Elevated vol (>1.5x)",   value: elevCount,    color: "#fb923c" },
+                { label: "Very high vol (>2x)",    value: vhCount,      color: "#ef4444" },
+                { label: "ETFs tracked",           value: enriched.length, color: "#1e293b" },
+                { label: "Categories",             value: CATEGORIES.length, color: "#64748b" },
               ].map(({ label, value, color }) => (
-                <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 16px", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
-                  <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
+                <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
+                  <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
                 </div>
               ))}
             </div>
 
             {/* Legend */}
             <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8, display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 700, color: "#475569" }}>Flow = close vs open (Investing.com method):</span>
+              <span style={{ fontWeight: 700, color: "#475569" }}>Flow = close vs open:</span>
               <span style={{ color: "#22c55e" }}>▲ Inflow = close &gt; open</span>
               <span style={{ color: "#ef4444" }}>▼ Outflow = close &lt; open</span>
               <span style={{ color: "#94a3b8" }}>— Neutral</span>
-              <span style={{ borderLeft: "2px solid #60a5f7", paddingLeft: 16 }}>Sparkline = last 5 days · dashed line = 30-day avg</span>
+              <span style={{ borderLeft: "1px solid #e2e8f0", paddingLeft: 16 }}>Sparkline = last 5 days · <span style={{ color: "#3b82f6" }}>blue dashed</span> = 30-day avg</span>
             </div>
 
-            {/* BAR CHART */}
+            {/* ── BAR CHART VIEW ── */}
             {view === "bar" && (
               <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,.06)" }}>
                 <div style={{ padding: "7px 14px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <div style={{ fontSize: 10, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Ranked by volume ratio — yesterday vs 30-day avg</div>
                   <div style={{ display: "flex", gap: 12, fontSize: 10, color: "#64748b" }}>
-                    {[["#ef4444", ">=2x"], ["#fb923c", ">=1.5x"], ["#22c55e", ">=1x"], ["#c084fc", "<0.7x"]].map(([c, l]) => (
+                    {[["#ef4444",">=2x"],["#fb923c",">=1.5x"],["#22c55e",">=1x"],["#c084fc","<0.7x"]].map(([c,l]) => (
                       <span key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, background: c, display: "inline-block" }} />{l}
                       </span>
                     ))}
                   </div>
                 </div>
-
-                {/* Column headers */}
                 <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 64px 80px 70px", alignItems: "center", gap: 10, padding: "4px 14px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase" }}>ETF</div>
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase" }}>Volume ratio bar</div>
@@ -214,16 +219,12 @@ export default function Dashboard() {
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "right" }}>Flow</div>
                   <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "right" }}>Ratio</div>
                 </div>
-
                 {filtered.map((r, i) => {
                   const pct = Math.min((r.ratio / (maxRatio * 1.05)) * 100, 100);
                   const barColor = r.ratio >= 2 ? "#ef4444" : r.ratio >= 1.5 ? "#fb923c" : r.ratio >= 1.0 ? "#22c55e" : "#c084fc";
                   const catColor = CAT_COLOR[r.category] ?? "#60a5fa";
-
                   return (
                     <div key={r.ticker} style={{ display: "grid", gridTemplateColumns: "100px 1fr 64px 80px 70px", alignItems: "center", gap: 10, padding: "5px 14px", background: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
-
-                      {/* Ticker */}
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                           <span style={{ width: 3, height: 12, borderRadius: 2, background: catColor, display: "inline-block", flexShrink: 0 }} />
@@ -231,27 +232,16 @@ export default function Dashboard() {
                         </div>
                         <div style={{ fontSize: 10, color: "#94a3b8", marginLeft: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
                       </div>
-
-                      {/* Ratio bar */}
                       <div style={{ position: "relative" }}>
                         <div style={{ height: 16, background: "#f1f5f9", borderRadius: 3, overflow: "hidden" }}>
                           <div style={{ width: `${pct}%`, height: "100%", background: barColor, borderRadius: 3, opacity: 0.8 }} />
                         </div>
-                        {/* 1x baseline marker */}
                         <div style={{ position: "absolute", top: 0, left: `${Math.min((1 / (maxRatio * 1.05)) * 100, 100)}%`, width: 1, height: "100%", background: "#94a3b8", pointerEvents: "none" }} />
                       </div>
-
-                      {/* 5-day sparkline */}
                       <div style={{ display: "flex", justifyContent: "flex-end" }}>
                         <Sparkline days={r.last5 || []} avg30={r.avg30} />
                       </div>
-
-                      {/* Flow badge */}
-                      <div style={{ textAlign: "right" }}>
-                        <FlowBadge flow={r.flow} />
-                      </div>
-
-                      {/* Ratio + volume */}
+                      <div style={{ textAlign: "right" }}><FlowBadge flow={r.flow} /></div>
                       <div style={{ textAlign: "right" }}>
                         <RatioBadge ratio={r.ratio} />
                         <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{fmt(r.volume)}</div>
@@ -262,70 +252,70 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* TABLE VIEW */}
+            {/* ── TABLE VIEW ── */}
             {view === "table" && (
-              <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-                  {[
-                    { label: "Top 5 — Highest Volume Ratio", color: "#059669", items: top5 },
-                    { label: "Bottom 5 — Lowest Volume Ratio", color: "#7c3aed", items: bot5 },
-                  ].map(({ label, color, items }) => (
-                    <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
-                      <div style={{ padding: "8px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 10, color, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</div>
-                      {items.map((r, i) => (
-                        <div key={r.ticker} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 14px", borderBottom: i < 4 ? "1px solid #f8fafc" : "none", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ color, fontSize: 11, width: 20, fontWeight: 700 }}>#{i + 1}</span>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{r.ticker}</div>
-                              <div style={{ fontSize: 10, color: "#94a3b8" }}>{r.name}</div>
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                            <Sparkline days={r.last5 || []} avg30={r.avg30} />
-                            <FlowBadge flow={r.flow} />
-                            <div style={{ textAlign: "right" }}>
-                              <RatioBadge ratio={r.ratio} />
-                              <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{fmt(r.volume)}</div>
-                            </div>
+              <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
+                <div style={{ padding: "8px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Full Table — Click Column to Sort</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+                      {([["ticker","Ticker"],["","Name"],["","Category"],["flow","Flow"],["ratio","Ratio"],["volume","Volume"],["dollarVolume","$Vol (M)"],["","5-Day"]] as [string,string][]).map(([key, label]) => (
+                        <th key={label} onClick={() => key && toggleSort(key as SortKey)} style={{ padding: "7px 12px", textAlign: "left", color: key && sortKey === key ? "#2563eb" : "#64748b", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", cursor: key ? "pointer" : "default", fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {label}{key && sortKey === key ? (sortAsc ? " ↑" : " ↓") : ""}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((r, i) => (
+                      <tr key={r.ticker} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <td style={{ padding: "5px 12px", fontWeight: 700, fontSize: 12, color: "#0f172a" }}>{r.ticker}</td>
+                        <td style={{ padding: "5px 12px", color: "#475569", fontSize: 11 }}>{r.name}</td>
+                        <td style={{ padding: "5px 12px" }}>
+                          <span style={{ background: (CAT_COLOR[r.category] ?? "#60a5fa") + "20", color: CAT_COLOR[r.category] ?? "#60a5fa", borderRadius: 3, padding: "1px 6px", fontSize: 10, fontWeight: 600 }}>{r.category}</span>
+                        </td>
+                        <td style={{ padding: "5px 12px" }}><FlowBadge flow={r.flow} /></td>
+                        <td style={{ padding: "5px 12px" }}><RatioBadge ratio={r.ratio} /></td>
+                        <td style={{ padding: "5px 12px", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>{fmt(r.volume)}</td>
+                        <td style={{ padding: "5px 12px", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>${r.dollarVolume.toLocaleString()}M</td>
+                        <td style={{ padding: "5px 12px" }}><Sparkline days={r.last5 || []} avg30={r.avg30} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* ── TOP / BOTTOM 5 VIEW ── */}
+            {view === "top5" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {[
+                  { label: "Top 5 — Highest Volume Ratio", color: "#059669", items: top5 },
+                  { label: "Bottom 5 — Lowest Volume Ratio", color: "#7c3aed", items: bot5 },
+                ].map(({ label, color, items }) => (
+                  <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
+                    <div style={{ padding: "8px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 10, color, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>{label}</div>
+                    {items.map((r, i) => (
+                      <div key={r.ticker} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", borderBottom: i < 4 ? "1px solid #f8fafc" : "none", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ color, fontSize: 11, width: 20, fontWeight: 700 }}>#{i + 1}</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{r.ticker}</div>
+                            <div style={{ fontSize: 10, color: "#94a3b8" }}>{r.name}</div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Full table */}
-                <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
-                  <div style={{ padding: "8px 14px", borderBottom: "1px solid #f1f5f9", fontSize: 10, color: "#64748b", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Full Table — Click to Sort</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                        {([["ticker","Ticker"],["","Name"],["","Category"],["flow","Flow"],["ratio","Ratio"],["volume","Volume"],["dollarVolume","$Vol (M)"],["","5-Day"]] as [string,string][]).map(([key, label]) => (
-                          <th key={label} onClick={() => key && toggleSort(key as SortKey)} style={{ padding: "7px 12px", textAlign: "left", color: key && sortKey === key ? "#2563eb" : "#64748b", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", cursor: key ? "pointer" : "default", fontWeight: 700, whiteSpace: "nowrap" }}>
-                            {label}{key && sortKey === key ? (sortAsc ? " ↑" : " ↓") : ""}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((r, i) => (
-                        <tr key={r.ticker} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                          <td style={{ padding: "5px 12px", fontWeight: 700, fontSize: 12, color: "#0f172a" }}>{r.ticker}</td>
-                          <td style={{ padding: "5px 12px", color: "#475569", fontSize: 11 }}>{r.name}</td>
-                          <td style={{ padding: "5px 12px" }}>
-                            <span style={{ background: (CAT_COLOR[r.category] ?? "#60a5fa") + "20", color: CAT_COLOR[r.category] ?? "#60a5fa", borderRadius: 3, padding: "1px 6px", fontSize: 10, fontWeight: 600 }}>{r.category}</span>
-                          </td>
-                          <td style={{ padding: "5px 12px" }}><FlowBadge flow={r.flow} /></td>
-                          <td style={{ padding: "5px 12px" }}><RatioBadge ratio={r.ratio} /></td>
-                          <td style={{ padding: "5px 12px", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>{fmt(r.volume)}</td>
-                          <td style={{ padding: "5px 12px", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>${r.dollarVolume.toLocaleString()}M</td>
-                          <td style={{ padding: "5px 12px" }}><Sparkline days={r.last5 || []} avg30={r.avg30} /></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Sparkline days={r.last5 || []} avg30={r.avg30} />
+                          <FlowBadge flow={r.flow} />
+                          <div style={{ textAlign: "right" }}>
+                            <RatioBadge ratio={r.ratio} />
+                            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{fmt(r.volume)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             )}
           </>
@@ -334,4 +324,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
