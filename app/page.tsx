@@ -401,11 +401,15 @@ type LeveredPayload = {
   meta:  { totalAvg5: number; bullAvg5: number; bearAvg5: number; bbRatio: number | null; updatedAt: string };
 };
 
+type LSortKey = "ticker" | "bias" | "volume" | "avg5" | "pctOfGroup" | "price" | "chg1d" | "ytd";
+
 function LeveredTab() {
   const [data,    setData]    = useState<LeveredPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [filter,  setFilter]  = useState<"all" | "bull" | "bear">("all");
+  const [sortKey, setSortKey] = useState<LSortKey>("avg5");
+  const [sortAsc, setSortAsc] = useState(false);
 
   useEffect(() => {
     fetch("/api/levered")
@@ -414,10 +418,23 @@ function LeveredTab() {
       .catch(() => { setError("Failed to fetch levered data"); setLoading(false); });
   }, []);
 
+  function toggleSort(key: LSortKey) {
+    if (sortKey === key) setSortAsc(v => !v);
+    else { setSortKey(key); setSortAsc(false); }
+  }
+
   const filtered = useMemo(() => {
     if (!data) return [];
-    return filter === "all" ? data.etfs : data.etfs.filter(e => e.bias === filter);
-  }, [data, filter]);
+    const list = filter === "all" ? data.etfs : data.etfs.filter(e => e.bias === filter);
+    return [...list].sort((a, b) => {
+      const mul = sortAsc ? 1 : -1;
+      if (sortKey === "ticker") return mul * a.ticker.localeCompare(b.ticker);
+      if (sortKey === "bias")   return mul * a.bias.localeCompare(b.bias);
+      const av = (a as any)[sortKey] ?? -Infinity;
+      const bv = (b as any)[sortKey] ?? -Infinity;
+      return mul * (av - bv);
+    });
+  }, [data, filter, sortKey, sortAsc]);
 
   const meta = data?.meta;
   const updatedAt = meta?.updatedAt
@@ -433,12 +450,27 @@ function LeveredTab() {
     : meta.bbRatio < 0.8 ? "#ef4444"
     : "#f59e0b";
 
+  // Column definitions: [label, sortKey | null, align]
+  const COLS: [string, LSortKey | null, "left" | "right"][] = [
+    ["#",          null,         "left"],
+    ["Ticker",     "ticker",     "left"],
+    ["Name",       null,         "left"],
+    ["Bias",       "bias",       "left"],
+    ["Underlying", null,         "left"],
+    ["Today Vol",  "volume",     "right"],
+    ["5D Avg Vol", "avg5",       "right"],
+    ["% of Group", "pctOfGroup", "right"],
+    ["Price",      "price",      "right"],
+    ["1D %",       "chg1d",      "right"],
+    ["YTD %",      "ytd",        "right"],
+  ];
+
   return (
     <div style={{ padding: "12px 20px 0" }}>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
         <div style={{ fontSize: 10, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-          Leveraged &amp; Inverse Single-Stock ETFs — Sorted by 5-Day Avg Volume
+          Leveraged &amp; Inverse Single-Stock ETFs — Click any column header to sort
         </div>
         {updatedAt && <div style={{ fontSize: 11, color: "#94a3b8" }}>Updated {updatedAt}</div>}
       </div>
@@ -455,10 +487,10 @@ function LeveredTab() {
           {/* Summary cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 12 }}>
             {[
-              { label: "Bull 5D Avg Vol",  value: meta?.bullAvg5 ? fmt(meta.bullAvg5) : "—", color: "#22c55e" },
-              { label: "Bear 5D Avg Vol",  value: meta?.bearAvg5 ? fmt(meta.bearAvg5) : "—", color: "#ef4444" },
-              { label: "Bull : Bear Ratio", value: meta?.bbRatio != null ? meta.bbRatio.toFixed(2) : "—", sub: bbLabel, color: bbColor },
-              { label: "Group 5D Avg Vol", value: meta?.totalAvg5 ? fmt(meta.totalAvg5) : "—", color: "#60a5fa" },
+              { label: "Bull 5D Avg Vol",   value: meta?.bullAvg5  ? fmt(meta.bullAvg5)  : "—", color: "#22c55e" },
+              { label: "Bear 5D Avg Vol",   value: meta?.bearAvg5  ? fmt(meta.bearAvg5)  : "—", color: "#ef4444" },
+              { label: "Bull : Bear Ratio", value: meta?.bbRatio   != null ? meta.bbRatio.toFixed(2) : "—", sub: bbLabel, color: bbColor },
+              { label: "Group 5D Avg Vol",  value: meta?.totalAvg5 ? fmt(meta.totalAvg5) : "—", color: "#60a5fa" },
             ].map(({ label, value, sub, color }) => (
               <div key={label} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
                 <div style={{ fontSize: 9, color: "#94a3b8", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
@@ -483,12 +515,17 @@ function LeveredTab() {
 
           {/* Table */}
           <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,.04)" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
               <thead>
                 <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                  {["#","Ticker","Name","Bias","Underlying","Today Vol","5D Avg Vol","% of Group","Price","1D %","YTD %"].map((h, i) => (
-                    <th key={h} style={{ padding: "7px 12px", textAlign: i <= 4 ? "left" : "right", color: "#64748b", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
+                  {COLS.map(([label, key, align]) => {
+                    const active = key && sortKey === key;
+                    return (
+                      <th key={label} onClick={() => key && toggleSort(key)} style={{ padding: "8px 12px", textAlign: align, color: active ? "#2563eb" : "#64748b", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700, whiteSpace: "nowrap", cursor: key ? "pointer" : "default", userSelect: "none" }}>
+                        {label}{active ? (sortAsc ? " ↑" : " ↓") : ""}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -497,17 +534,17 @@ function LeveredTab() {
                   const ytdColor = r.ytd   == null ? "#94a3b8" : r.ytd   >= 0 ? "#22c55e" : "#ef4444";
                   return (
                     <tr key={r.ticker} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                      <td style={{ padding: "6px 12px", color: "#94a3b8", fontSize: 11 }}>{i + 1}</td>
-                      <td style={{ padding: "6px 12px", fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{r.ticker}</td>
-                      <td style={{ padding: "6px 12px", color: "#475569", fontSize: 11, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</td>
-                      <td style={{ padding: "6px 12px" }}><BiasBadge bias={r.bias} /></td>
-                      <td style={{ padding: "6px 12px", color: "#64748b", fontSize: 11, fontFamily: "monospace" }}>{r.underlying}</td>
-                      <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>{r.volume != null ? fmt(r.volume) : "—"}</td>
-                      <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "monospace", color: "#2563eb", fontSize: 11, fontWeight: 600 }}>{r.avg5 != null ? fmt(r.avg5) : "—"}</td>
-                      <td style={{ padding: "6px 12px" }}><PctBar pct={r.pctOfGroup} /></td>
-                      <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "monospace", color: "#475569", fontSize: 11 }}>{r.price != null ? `$${r.price.toFixed(2)}` : "—"}</td>
-                      <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "monospace", fontSize: 11, fontWeight: 600, color: chgColor }}>{fmtPct(r.chg1d)}</td>
-                      <td style={{ padding: "6px 12px", textAlign: "right", fontFamily: "monospace", fontSize: 11, color: ytdColor }}>{fmtPct(r.ytd)}</td>
+                      <td style={{ padding: "7px 12px", color: "#94a3b8", fontSize: 12 }}>{i + 1}</td>
+                      <td style={{ padding: "7px 12px", fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{r.ticker}</td>
+                      <td style={{ padding: "7px 12px", color: "#475569", fontSize: 13, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</td>
+                      <td style={{ padding: "7px 12px" }}><BiasBadge bias={r.bias} /></td>
+                      <td style={{ padding: "7px 12px", color: "#64748b", fontSize: 13, fontFamily: "monospace" }}>{r.underlying}</td>
+                      <td style={{ padding: "7px 12px", textAlign: "right", fontFamily: "monospace", color: "#475569", fontSize: 13 }}>{r.volume != null ? fmt(r.volume) : "—"}</td>
+                      <td style={{ padding: "7px 12px", textAlign: "right", fontFamily: "monospace", color: "#2563eb", fontSize: 13, fontWeight: 600 }}>{r.avg5 != null ? fmt(r.avg5) : "—"}</td>
+                      <td style={{ padding: "7px 12px" }}><PctBar pct={r.pctOfGroup} /></td>
+                      <td style={{ padding: "7px 12px", textAlign: "right", fontFamily: "monospace", color: "#475569", fontSize: 13 }}>{r.price != null ? `$${r.price.toFixed(2)}` : "—"}</td>
+                      <td style={{ padding: "7px 12px", textAlign: "right", fontFamily: "monospace", fontSize: 13, fontWeight: 600, color: chgColor }}>{fmtPct(r.chg1d)}</td>
+                      <td style={{ padding: "7px 12px", textAlign: "right", fontFamily: "monospace", fontSize: 13, color: ytdColor }}>{fmtPct(r.ytd)}</td>
                     </tr>
                   );
                 })}
@@ -516,7 +553,7 @@ function LeveredTab() {
           </div>
 
           <div style={{ textAlign: "center", fontSize: 10, color: "#94a3b8", marginTop: 14 }}>
-            Share volume (equity, not options) · Sorted by 5-day average · Data via Yahoo Finance end-of-day · Bull:Bear ratio based on 5D avg volume
+            Share volume (equity, not options) · Data via Yahoo Finance end-of-day · Bull:Bear ratio based on 5D avg volume
           </div>
         </>
       )}
